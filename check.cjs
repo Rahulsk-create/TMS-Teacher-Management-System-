@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const html=fs.readFileSync('index.html','utf8');
-const script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').split('/* ================= INIT ================= */')[0];
+const script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').split('/* ================= INIT ================= */')[0].split('/* Browser-local sign-in.')[0];
 const memory=new Map(),elements=new Map();
 const el=id=>{if(!elements.has(id))elements.set(id,{value:'',style:{},innerHTML:'',classList:{add(){},remove(){}}});return elements.get(id)};
 const ctx={console,Date,Math,JSON,Set,Map,Intl,Blob,URL,setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{getElementById:el,querySelector:()=>null,querySelectorAll:()=>[],activeElement:null},navigator:{},window:{},Notification:{permission:'denied'}};
