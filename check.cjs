@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const html=fs.readFileSync('outputs/TMS_Teacher_Management_System.html','utf8');
+const html=fs.readFileSync('index.html','utf8');
 const script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').split('/* ================= INIT ================= */')[0].split('/* Browser-local sign-in.')[0];
 const memory=new Map(),elements=new Map();
 const el=id=>{if(!elements.has(id))elements.set(id,{value:'',style:{},innerHTML:'',classList:{add(){},remove(){}}});return elements.get(id)};

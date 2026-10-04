@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const html=fs.readFileSync('outputs/TMS_Teacher_Management_System.html','utf8');
+const html=fs.readFileSync('index.html','utf8');
 const script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').split('/* ================= INIT ================= */')[0].split('/* Browser-local sign-in.')[0];
 const store=new Map(),items=new Map(),el=id=>{if(!items.has(id))items.set(id,{value:'',style:{},innerHTML:'',classList:{add(){},remove(){}}});return items.get(id)};
 const c={console,Date,Math,JSON,Set,Map,Intl,Blob,URL,Uint8Array,FormData:class{constructor(v){this.v=v}entries(){return Object.entries(this.v)}},setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},document:{getElementById:el,querySelector:()=>null,querySelectorAll:()=>[],activeElement:null},navigator:{},Notification:{permission:'denied'},confirm:()=>true};c.window=c;vm.createContext(c);vm.runInContext(script,c);
