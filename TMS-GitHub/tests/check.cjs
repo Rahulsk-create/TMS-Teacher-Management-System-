@@ -1,0 +1,24 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync('index.html','utf8');
+const script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').split('/* ================= INIT ================= */')[0].split('/* Browser-local sign-in.')[0];
+const memory=new Map(),elements=new Map();
+const el=id=>{if(!elements.has(id))elements.set(id,{value:'',style:{},innerHTML:'',classList:{add(){},remove(){}}});return elements.get(id)};
+const ctx={console,Date,Math,JSON,Set,Map,Intl,Blob,URL,setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{getElementById:el,querySelector:()=>null,querySelectorAll:()=>[],activeElement:null},navigator:{},window:{},Notification:{permission:'denied'}};
+ctx.window=ctx;vm.createContext(ctx);vm.runInContext(script,ctx);
+vm.runInContext(`refreshScheduleForm=()=>{};state=defaultState();render();`,ctx);
+assert(el('app').innerHTML.includes('Teacher Management System'));
+assert(!/xylem/i.test(html));
+(async()=>{
+ await vm.runInContext(`(async()=>{currentUser.viewAs='teacher';currentUser.name='AD';currentUser.role='attendance';render();if(tmsRecords().some(s=>s.faculty!=='AD'))throw Error('Teacher scope');
+ const s=state.schedules.find(s=>s.faculty==='AD'&&s.date===todayISO());s.mode='online';await startClass(s.id);if(!s.actualStart||s.entryReview.status!=='pending')throw Error('Entry not captured');
+ await stopClass(s.id);if(!s.actualEnd||s.exitReview.status!=='pending')throw Error('Exit not captured');
+ currentUser.viewAs='mentor';currentUser.name='';currentUser.role='attendance';currentUser.coordinator='Test Mentor';render();
+ await reviewTmsAttendance(s.id,'entry','approved');if(s.entryReview.status!=='approved')throw Error('Approve failed');
+ await reviewTmsAttendance(s.id,'exit','rejected');if(s.exitReview.status!=='pending')throw Error('Rejection allowed without reason');
+ document.getElementById('note-'+s.id+'-exit').value='Incorrect exit time';await reviewTmsAttendance(s.id,'exit','rejected');if(s.exitReview.status!=='rejected')throw Error('Reject failed');
+ const batch=state.batches[0];state.students=[{id:'student-test',code:'S001',name:'Test Student',programId:batch.programId,batchId:batch.id,contact:''}];state.studentAttendance={};currentUser.viewAs='stakeholder';currentUser.role='students';render();if(!document.getElementById('app').innerHTML.includes('Test Student'))throw Error('Student render');await studentSaveMutation(()=>{state.studentAttendance[todayISO()]={'student-test':{status:'present',by:'Test'}};});currentUser.viewAs='mentor';if(visibleStudents().length)throw Error('Mentor student scope');currentUser.viewAs='teacher';currentUser.name='AD';if(visibleStudents().length!==1)throw Error('Teacher student mapping');currentUser.name='RS';if(visibleStudents().length)throw Error('Unassigned students visible');
+const restored=await loadState();if(restored.studentAttendance[todayISO()]['student-test'].status!=='present')throw Error('Student persistence');if(restored.schedules.find(x=>x.id===s.id).entryReview.by!=='Test Mentor')throw Error('Persistence failed');
+ currentUser.viewAs='stakeholder';currentUser.role='coordinator';render();
+ })()`,ctx);
+ console.log('PASS: JavaScript parses, branding, principal render, teacher scope, entry/exit capture, mentor approval, required rejection reason, and saved decisions.');
+})().catch(e=>{console.error(e);process.exitCode=1});
