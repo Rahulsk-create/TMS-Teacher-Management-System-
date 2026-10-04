@@ -1,97 +1,66 @@
-# TMS online — administrator-controlled staff access
+# TMS project
 
-This is the server-backed version of TMS. It preserves the teacher/student interface and replaces browser-local accounts and data storage with server sessions, server permission checks and a persistent SQLite database.
+- **Hosted server version:** see [online/README.md](online/README.md) for server-side sign-in, administrator-created accounts, database setup and deployment.
+- **Standalone local demo:** the root index.html described below. Its browser-local login is not the hosted authentication system.
 
-**Prepared for deployment; not hosted yet.** The original standalone HTML edition remains separate. Do not open `public/index.html` directly: it requires this server. GitHub Pages cannot run this application.
+# TMS — Teacher Management System
 
-## Account rules
+A standalone HTML application for teacher scheduling, attendance, mentor reviews and student administration. Includes a navy blue and gold theme and responsive layouts.
 
-- No public signup, registration or web-based first-administrator setup.
-- The owner creates the initial administrator using the server console.
-- Only administrators create staff User IDs and initial passwords.
-- Roles: administrator, coordinator, teacher and mentor.
-- Teachers must map to an existing teacher record. They receive only their assigned sessions and students, excluding student medical and guardian details.
-- Mentors receive teacher attendance for review, not student profiles or financial data.
-- Coordinators manage institutional records but cannot manage user accounts.
-- New and reset staff passwords must be changed before accessing records.
-- Administrator disable/reset actions immediately revoke that account’s existing sessions. Self-service password changes also revoke other sessions.
+## Run locally
 
-## Local verification
+Download `index.html` and open it in a modern browser. No build or installation is required. Keep using the same browser and file location to retain access to saved records. Data is stored in browser localStorage, not in this repository.
 
-Install Node.js 24 LTS (24.15 or later within the 24.x series).
+External fonts and the Excel import library load from Google Fonts and cdnjs. CSV import works without the Excel library. Classroom session check-in uses browser location permission; configure centre coordinates first, and note that browser restrictions may require serving the page from localhost or HTTPS for location access.
+
+## Features
+
+- Principal/coordinator: teacher setup, programs, batches, classrooms, individual and recurring timetables, bulk schedule import and change approvals.
+- Teachers: personal timetable, entry/exit timestamps and requests.
+- Mentors: approve or reject recorded teacher attendance with review notes.
+- Students: register, batch mapping, guardian contacts, CSV/Excel import and daily attendance.
+- Student operations: profiles, academic history, progress notes, application documents, waitlists and enrollment into student records.
+- Assessments and progress exports; exam scheduling checks room and cohort clashes at creation time.
+- INR fee invoices, installment invoices, manual payment recording, balance calculations and downloadable payment acknowledgments.
+- Communication drafts and deduplicated absence alert drafts; no automatic sending.
+- Date-filtered attendance and academic reports, local activity records and JSON backup export.
+
+## Suggested workflow
+
+1. On first use, create an administrator account with your own User ID and password (10–128 characters). There are no default credentials. Use **User accounts** to add staff, map teachers, disable accounts or reset passwords.
+2. Set up programs, batches, teachers and rooms under **Admin**. Initial timetable entries are sample data.
+3. Add or import students under **Student management**. Import template columns are Admission number, Student name, Program, Batch and Guardian contact. Program/batch names must already exist and match uniquely.
+4. Open **Student operations** for admissions, profiles, grades, exams, fees, communication drafts and reports.
+5. Sign out and sign in with a teacher account to view assigned classes and students, or a mentor account to review teacher entry/exit records.
+
+Batch strength is used as enrollment capacity when processing applications. Supporting documents are limited to one PDF, PNG or JPEG per application, up to 250 KB. Browser storage capacity is limited; export backups regularly. Backup restoration is not implemented.
+
+## Important local-edition limitations
+
+This is a local prototype, not a production student information service:
+
+- Browser-local sign-in gates the UI and maps each account to its role. Passwords use salted PBKDF2-SHA-256 hashes (210,000 iterations). This is not server authentication: someone with browser storage or developer-tool access can bypass it. There is no server-enforced authorization, encryption at rest or tamper-proof audit log.
+- Devices do not share records. Publicly hosting this HTML does not create shared storage or real staff, parent or student accounts.
+- Use sample data for sensitive medical, safeguarding and identity-document fields until secure storage is implemented.
+- No online payments, tax receipt generation, RFID/biometric integration, LMS/HR/finance API connection or outbound messaging is configured.
+- Payments are manually recorded; receipts are payment acknowledgments, not tax receipts.
+- Waitlisting uses configured capacity; promotion is manual. Exams are manually scheduled, not automatically optimized.
+- No GDPR or FERPA compliance certification is claimed.
+
+No browser-saved student records, application documents, private backups or credentials are included in this source repository.
+
+## Checks
+
+With Node.js installed, run from the repository root:
 
 ```sh
-node admin.mjs
-node server.mjs
+node tests/check.cjs
+node tests/sms-check.cjs
+node tests/login-check.cjs
 ```
 
-The console asks for the initial administrator User ID, display name and password. Password entry is hidden. There are no default credentials. Open **http://127.0.0.1:3000** and sign in.
+These checks run application logic with a simulated browser environment. They cover teacher attendance, mentor review, student scoping and persistence, enrollment capacity, grade bounds, payment balance precision, overpayment rejection, absence draft deduplication and exam clash checks. They do not replace real-browser UI testing.
 
-The server starts with an empty institutional database. Configure centres, programs, batches and teachers in Admin setup, then create staff accounts under **User accounts**. Existing browser-local accounts are not copied to the server.
+## Local account storage
 
-```sh
-node --test tests/security.test.mjs
-```
-
-No npm packages are required by the server. Node's built-in SQLite module stores records in `data/tms.sqlite` by default. SQLite WAL files must remain alongside the database.
-
-## Deploy on a host with persistent storage
-
-Use a host that runs a long-lived Node.js process or Docker container and provides a persistent writable disk. This package is designed for one application instance, not a multi-instance or ephemeral serverless deployment.
-
-1. Upload this folder to a private source repository or your hosting service. Do not upload the `data` directory, environment files, database files, passwords or private backups.
-2. Attach a persistent disk at `/data`. The application user must be able to write there. For this Docker image the user is `node` (UID 1000).
-3. Set `NODE_ENV=production`, `DATA_DIR=/data`, `HOST=0.0.0.0` and `PORT=3000`.
-4. Set `APP_ORIGIN` to the exact HTTPS public origin, for example `https://tms.your-school.example`, without a trailing slash. Use your actual address, not the example.
-5. Let the host terminate HTTPS and proxy requests to port 3000. Restrict direct access to the application port. Production startup rejects a non-HTTPS public origin.
-6. Run `node admin.mjs` in the host's console **with the same DATA_DIR and persistent disk**. This console command is the only initial-administrator creation path.
-7. Start the server using `node server.mjs` or build and run the included Dockerfile. Health check: `GET /health`.
-8. Verify HTTPS sign-in, staff password changes, role restrictions, logout and account disabling on the real deployment before inviting staff.
-
-If using Docker directly:
-
-```sh
-docker build -t tms-online .
-docker volume create tms-data
-docker run --rm -it -v tms-data:/data -e DATA_DIR=/data tms-online node admin.mjs
-docker run --name tms -d --restart unless-stopped \
-  -p 127.0.0.1:3000:3000 -v tms-data:/data \
-  -e APP_ORIGIN=https://YOUR-ACTUAL-HOSTNAME \
-  tms-online
-```
-
-The Docker example assumes an HTTPS reverse proxy on the same machine. It does not create a domain, TLS certificate, cloud account or proxy automatically.
-
-## Password recovery and backups
-
-An administrator resets staff passwords from **User accounts**. For a lost administrator password, a trusted server operator runs `node admin.mjs reset` in the same database environment. This revokes existing sessions; it does not delete institutional records.
-
-Configure encrypted persistent storage and restricted host-console access. Establish database backups and test restoration. Stop the application before making a filesystem copy of the database and its WAL files, or use a SQLite-consistent backup mechanism. Protect backups: they contain student information, password hashes and audit records. Do not put them into GitHub. No automatic backup or recovery service is included.
-
-## Implemented controls
-
-- Salted scrypt password hashes; plaintext passwords are not stored.
-- Random eight-hour sessions, with only a hash of each session token stored in the database.
-- HttpOnly, SameSite=Strict cookies; Secure and `__Host-` cookies on HTTPS.
-- Exact-origin checks and per-session CSRF tokens on authenticated mutations.
-- Login attempt limits, bounded password-hash concurrency and request-size limits.
-- Server filtering and write authorization for teachers and mentors; server-stamped teacher entry/exit times and mentor decisions.
-- Revision checks prevent silent overwrites when another session changes records.
-- Audit events are written by the server, not accepted from the client. A trusted server/database operator can still modify them; this is not immutable external audit storage.
-- CSP nonces, no third-party executable scripts, no framing and no cached API responses.
-
-## Current boundaries
-
-- CSV imports are supported. The hosted package deliberately excludes the standalone edition's remote Excel script; save Excel files as CSV for import.
-- Payments remain manual entries and messages remain drafts. There is no payment gateway, email/SMS delivery, LMS integration or biometric connection.
-- Teachers' browser-reported location is checked for distance but is not proof against device location spoofing.
-- No MFA, automated email recovery, identity verification, legal compliance certification or independent security audit is included.
-- The legacy screen logic and business validations need institution-specific acceptance testing. The included tests focus on authentication, data scoping, write restrictions and session revocation; they do not prove that every administrative workflow is correct.
-- Records are encrypted in transit when deployed behind HTTPS. At-rest protection, backups, monitoring, patching and operating procedures are hosting responsibilities.
-- The single SQLite record snapshot is suitable for an initial small deployment, not a high-concurrency institutional service. Requests are limited to 8 MB for record saves and 16 KB for account actions.
-
-Technical references: [Node.js 24 SQLite](https://nodejs.org/download/release/latest-v24.x/docs/api/sqlite.html) and [Node.js cryptography](https://nodejs.org/api/crypto.html).
-
-## Teacher-management reference update
-
-The staff-only Teacher directory now supports subject filtering, professional profiles, qualifications, experience, joining dates and directory exports. Management can assign subjects and reply to internal queries. Other staff receive only public professional profile fields; private contact fields are returned only to management and the relevant teacher. Teacher and mentor query submissions are stamped with server identity, and only management can reply or resolve them. These additions were informed by the user-supplied IARJSET-ICMART-28 paper (ICMART-2023, printed pages 173–179). See REFERENCE.md for attribution and the scope mapping.
+Accounts are saved separately from student records in this browser. Sign-in is required after a reload. User IDs are case-insensitive; passwords are case-sensitive. Existing operational records are retained when first creating an account. Administrators can reset staff passwords; there is no administrator password-recovery service. JSON data backups do not include account password hashes. Do not clear browser storage to recover a password, as doing so can remove operational data.
