@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),{webcrypto}=require('crypto');
-const html=fs.readFileSync('index.html','utf8');
+const html=fs.readFileSync('outputs/TMS_Teacher_Management_System.html','utf8');
 const code=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(x=>x[1]).join('\n').split('/* ================= INIT ================= */')[0];
 const storage=new Map();const ctx={console,Date,Math,JSON,Set,Map,Intl,TextEncoder,Uint8Array,crypto:webcrypto,setTimeout:()=>0,setInterval:()=>0,clearTimeout(){},clearInterval(){},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)},document:{getElementById:()=>null},navigator:{},addEventListener(){}};ctx.window=ctx;vm.createContext(ctx);vm.runInContext(code,ctx);
 (async()=>{await vm.runInContext(`(async()=>{
