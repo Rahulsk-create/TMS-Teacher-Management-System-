@@ -21,9 +21,9 @@ export function openStore(dir=process.env.DATA_DIR||'./data'){
  CREATE TABLE IF NOT EXISTS state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,payload TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,at TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY,count INTEGER NOT NULL,until INTEGER NOT NULL);`);
- const initial={centers:[],verticals:[],schedules:[],requests:[],faculty:[],programs:[],batches:[],classrooms:[],students:[],studentAttendance:{},applications:[],assessments:[],invoices:[],payments:[],messages:[],exams:[],studentNotes:[],auditLog:[],smsAudit:[]};
+ const initial={centers:[],verticals:[],schedules:[],requests:[],faculty:[],programs:[],batches:[],classrooms:[],students:[],studentAttendance:{},applications:[],assessments:[],invoices:[],payments:[],messages:[],exams:[],studentNotes:[],auditLog:[],smsAudit:[],subjects:[],teacherProfiles:[],teacherQueries:[]};
  db.prepare('INSERT OR IGNORE INTO state VALUES(1,0,?)').run(JSON.stringify(initial));return db;
 }
 export function log(db,actor,action){db.prepare('INSERT INTO audit(at,actor,action) VALUES(?,?,?)').run(new Date().toISOString(),actor,action);}
-export function readState(db){const r=db.prepare('SELECT * FROM state WHERE id=1').get();return {revision:r.revision,state:JSON.parse(r.payload)};}
+export function readState(db){const r=db.prepare('SELECT * FROM state WHERE id=1').get();const state=JSON.parse(r.payload);for(const key of ['subjects','teacherProfiles','teacherQueries'])state[key]??=[];return {revision:r.revision,state};}
 export function writeState(db,state,revision){const r=db.prepare('UPDATE state SET payload=?,revision=revision+1 WHERE id=1 AND revision=?').run(JSON.stringify(state),revision);if(!r.changes)fail('Records changed in another session. Reload and try again.',409);}
