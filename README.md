@@ -22,11 +22,11 @@ External fonts and the Excel import library load from Google Fonts and cdnjs. CS
 
 ## Suggested workflow
 
-1. Choose **Principal / Coordinator** and enter your name in the sidebar.
+1. On first use, create an administrator account with your own User ID and password (10–128 characters). There are no default credentials. Use **User accounts** to add staff, map teachers, disable accounts or reset passwords.
 2. Set up programs, batches, teachers and rooms under **Admin**. Initial timetable entries are sample data.
 3. Add or import students under **Student management**. Import template columns are Admission number, Student name, Program, Batch and Guardian contact. Program/batch names must already exist and match uniquely.
 4. Open **Student operations** for admissions, profiles, grades, exams, fees, communication drafts and reports.
-5. Switch to an individual teacher to view their assigned classes and students, or to Mentor to review teacher entry/exit records.
+5. Sign out and sign in with a teacher account to view assigned classes and students, or a mentor account to review teacher entry/exit records.
 
 Batch strength is used as enrollment capacity when processing applications. Supporting documents are limited to one PDF, PNG or JPEG per application, up to 250 KB. Browser storage capacity is limited; export backups regularly. Backup restoration is not implemented.
 
@@ -34,7 +34,7 @@ Batch strength is used as enrollment capacity when processing applications. Supp
 
 This is a local prototype, not a production student information service:
 
-- Role selection controls the UI only. There is no authentication, server-enforced authorization, encryption at rest or tamper-proof audit log.
+- Browser-local sign-in gates the UI and maps each account to its role. Passwords use salted PBKDF2-SHA-256 hashes (210,000 iterations). This is not server authentication: someone with browser storage or developer-tool access can bypass it. There is no server-enforced authorization, encryption at rest or tamper-proof audit log.
 - Devices do not share records. Publicly hosting this HTML does not create shared storage or real staff, parent or student accounts.
 - Use sample data for sensitive medical, safeguarding and identity-document fields until secure storage is implemented.
 - No online payments, tax receipt generation, RFID/biometric integration, LMS/HR/finance API connection or outbound messaging is configured.
@@ -51,6 +51,11 @@ With Node.js installed, run from the repository root:
 ```sh
 node tests/check.cjs
 node tests/sms-check.cjs
+node tests/login-check.cjs
 ```
 
 These checks run application logic with a simulated browser environment. They cover teacher attendance, mentor review, student scoping and persistence, enrollment capacity, grade bounds, payment balance precision, overpayment rejection, absence draft deduplication and exam clash checks. They do not replace real-browser UI testing.
+
+## Local account storage
+
+Accounts are saved separately from student records in this browser. Sign-in is required after a reload. User IDs are case-insensitive; passwords are case-sensitive. Existing operational records are retained when first creating an account. Administrators can reset staff passwords; there is no administrator password-recovery service. JSON data backups do not include account password hashes. Do not clear browser storage to recover a password, as doing so can remove operational data.
